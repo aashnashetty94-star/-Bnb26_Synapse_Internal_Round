@@ -3,6 +3,11 @@ import { requireAuth } from "@/src/lib/auth";
 import { getCurrentEventState, isRegistrationAllowed } from "@/src/lib/event-state";
 import { enterDrop } from "@/src/lib/drop";
 import { createInMemoryRateLimiter } from "@/src/lib/rate-limit";
+import {
+  recordDuplicateAttempt,
+  recordRateLimitHit,
+  recordRequest,
+} from "@/src/lib/risk";
 
 const dropEntryRateLimiter = createInMemoryRateLimiter("drop-entry", {
   maxRequests: 10,
@@ -16,6 +21,7 @@ export async function POST(request: Request) {
     if (errorResponse) {
       return errorResponse;
     }
+    recordRequest(user.id);
 
     // 2. Validate request (check content-type and JSON body if provided)
     const contentType = request.headers.get("content-type");
@@ -51,6 +57,7 @@ export async function POST(request: Request) {
     // 4. Enforce the per-user request limit before processing the entry.
     const rateLimit = dropEntryRateLimiter.check(user.id);
     if (!rateLimit.allowed) {
+      recordRateLimitHit(user.id);
       return NextResponse.json(
         {
           success: false,
@@ -70,6 +77,9 @@ export async function POST(request: Request) {
 
     // 5. Call drop-entry service (handles entry creation and duplicate protection)
     const result = await enterDrop(user.id, currentState);
+    if (result.isDuplicate) {
+      recordDuplicateAttempt(user.id);
+    }
 
     // 6. Return clear JSON response confirming drop entry
     return NextResponse.json(
