@@ -16,13 +16,13 @@ Follow these quick steps to get the application running on your machine:
 
 ### 1. Install Dependencies
 Open your terminal inside the project folder and install the required packages:
-\`\`\`bash
+\`\`\`
 npm install
 \`\`\`
 
 ### 2. Run the Development Server
 Start the local Next.js development server:
-\`\`\`bash
+\`\`\`
 npm run dev
 \`\`\`
 
