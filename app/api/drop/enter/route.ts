@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/src/lib/auth";
 import { getCurrentEventState, isRegistrationAllowed } from "@/src/lib/event-state";
 import { enterDrop } from "@/src/lib/drop";
+import { createInMemoryRateLimiter } from "@/src/lib/rate-limit";
+
+const dropEntryRateLimiter = createInMemoryRateLimiter("drop-entry", {
+  maxRequests: 10,
+  windowMs: 60_000,
+});
 
 export async function POST(request: Request) {
   try {
@@ -42,10 +48,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Call drop-entry service (handles entry creation and duplicate protection)
+    // 4. Enforce the per-user request limit before processing the entry.
+    const rateLimit = dropEntryRateLimiter.check(user.id);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "RATE_LIMIT_EXCEEDED",
+          message: `Too many drop-entry requests. Please try again in ${rateLimit.retryAfterSeconds} seconds.`,
+          remainingRequests: rateLimit.remaining,
+          retryAfterSeconds: rateLimit.retryAfterSeconds,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimit.retryAfterSeconds),
+          },
+        }
+      );
+    }
+
+    // 5. Call drop-entry service (handles entry creation and duplicate protection)
     const result = await enterDrop(user.id, currentState);
 
-    // 5. Return clear JSON response confirming drop entry
+    // 6. Return clear JSON response confirming drop entry
     return NextResponse.json(
       {
         success: result.success,
