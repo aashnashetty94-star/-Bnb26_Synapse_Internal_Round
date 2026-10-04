@@ -9,6 +9,11 @@ export interface InMemoryRateLimiterOptions {
   windowMs: number;
 }
 
+export interface InMemoryRateLimiter {
+  check(key: string): RateLimitResult;
+  clear(): void;
+}
+
 interface RateLimitWindow {
   count: number;
   startedAt: number;
@@ -27,7 +32,7 @@ declare global {
 export function createInMemoryRateLimiter(
   name: string,
   { maxRequests, windowMs }: InMemoryRateLimiterOptions
-): { check(key: string): RateLimitResult } {
+): InMemoryRateLimiter {
   if (!name.trim()) {
     throw new Error("Rate limiter name must not be empty");
   }
@@ -48,6 +53,9 @@ export function createInMemoryRateLimiter(
   }
 
   return {
+    clear(): void {
+      windows.clear();
+    },
     check(key: string): RateLimitResult {
       const now = Date.now();
 
@@ -84,4 +92,15 @@ export function createInMemoryRateLimiter(
       };
     },
   };
+}
+
+export function clearRateLimitState(): void {
+  const stores = globalThis.__fairdrop_rate_limit_stores__;
+  if (!stores) {
+    return;
+  }
+
+  for (const windows of stores.values()) {
+    windows.clear();
+  }
 }

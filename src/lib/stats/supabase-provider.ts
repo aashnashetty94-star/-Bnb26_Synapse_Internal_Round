@@ -9,27 +9,34 @@ function parseDashboardStats(value: unknown): DatabaseDashboardStats {
     throw new TypeError("get_dashboard_stats returned an invalid result");
   }
 
-  const { totalUsers, totalAllocations } = value;
+  const { users, allocated, total_seats: totalSeats } = value;
   if (
-    typeof totalUsers !== "number" ||
-    !Number.isFinite(totalUsers) ||
-    totalUsers < 0
+    typeof users !== "number" ||
+    !Number.isFinite(users) ||
+    users < 0
+  ) {
+    throw new RangeError("get_dashboard_stats returned an invalid users value");
+  }
+  if (
+    typeof allocated !== "number" ||
+    !Number.isFinite(allocated) ||
+    allocated < 0
   ) {
     throw new RangeError(
-      "get_dashboard_stats returned an invalid totalUsers value"
+      "get_dashboard_stats returned an invalid allocated value"
     );
   }
   if (
-    typeof totalAllocations !== "number" ||
-    !Number.isFinite(totalAllocations) ||
-    totalAllocations < 0
+    typeof totalSeats !== "number" ||
+    !Number.isFinite(totalSeats) ||
+    totalSeats < 0
   ) {
     throw new RangeError(
-      "get_dashboard_stats returned an invalid totalAllocations value"
+      "get_dashboard_stats returned an invalid total_seats value"
     );
   }
 
-  return { totalUsers, totalAllocations };
+  return { totalUsers: users, totalAllocations: allocated };
 }
 
 function getRpcErrorMessage(value: unknown, responseText: string): string {
